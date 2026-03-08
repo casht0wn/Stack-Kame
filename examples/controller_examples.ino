@@ -21,6 +21,8 @@ uint8_t robotMAC[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; // Update this!
 #define CMD_JUMP 0x08
 #define CMD_SHUFFLE_LEFT 0x09
 #define CMD_SHUFFLE_RIGHT 0x0A
+#define CMD_HOME 0x0B
+#define CMD_ZERO 0x0C
 #define CMD_EMERGENCY_STOP 0xFF
 
 esp_now_peer_info_t peerInfo;
@@ -38,7 +40,7 @@ void setup()
 
     M5Cardputer.Display.setRotation(1);
     M5Cardputer.Display.setTextSize(2);
-    M5Cardputer.Display.print("Stack Kame Control");
+    M5Cardputer.Display.println("Stack Kame Control");
 
     Serial.begin(115200);
 
@@ -96,55 +98,75 @@ void loop()
         {
             Keyboard_Class::KeysState status = M5Cardputer.Keyboard.keysState();
 
+            String keyStr = "";
+            for (auto i : status.word) {
+                if (keyStr != "") {
+                    keyStr = keyStr + "+" + i;
+                } else {
+                    keyStr = i;
+                }
+            }
+
+            // Base stances
+            if (keyStr == "h")
+            {
+                sendCommand(CMD_HOME, 0);
+                M5Cardputer.Display.println("Home");
+            }
+            else if (keyStr == "z")
+            {
+                sendCommand(CMD_ZERO, 0);
+                M5Cardputer.Display.println("Zero");
+            }
             // Arrow keys for movement
-            if (status.word == "w" || status.word == "up")
+            else if (keyStr == "w" || keyStr == "up")
             {
                 sendCommand(CMD_WALK_FORWARD, 3);
                 M5Cardputer.Display.println("Walk Forward");
             }
-            else if (status.word == "s" || status.word == "down")
+            else if (keyStr == "s" || keyStr == "down")
             {
                 sendCommand(CMD_WALK_BACKWARD, 3);
                 M5Cardputer.Display.println("Walk Back");
             }
-            else if (status.word == "a" || status.word == "left")
+            else if (keyStr == "a" || keyStr == "left")
             {
                 sendCommand(CMD_TURN_LEFT, 2);
                 M5Cardputer.Display.println("Turn Left");
             }
-            else if (status.word == "d" || status.word == "right")
+            else if (keyStr == "d" || keyStr == "right")
             {
                 sendCommand(CMD_TURN_RIGHT, 2);
                 M5Cardputer.Display.println("Turn Right");
             }
             // Special moves
-            else if (status.word == "j")
+            else if (keyStr == "j")
             {
                 sendCommand(CMD_JUMP, 0);
                 M5Cardputer.Display.println("Jump!");
             }
-            else if (status.word == "m")
+            else if (keyStr == "m")
             {
                 sendCommand(CMD_MOONWALK_FWD, 2);
                 M5Cardputer.Display.println("Moonwalk");
             }
-            else if (status.word == "q")
+            else if (keyStr == "q")
             {
                 sendCommand(CMD_SHUFFLE_LEFT, 2);
                 M5Cardputer.Display.println("Shuffle Left");
             }
-            else if (status.word == "e")
+            else if (keyStr == "e")
             {
                 sendCommand(CMD_SHUFFLE_RIGHT, 2);
                 M5Cardputer.Display.println("Shuffle Right");
             }
             // Stop commands
-            else if (status.word == " " || status.word == "space")
+            else if (keyStr == " " || keyStr == "space")
             {
                 sendCommand(CMD_STOP, 0);
                 M5Cardputer.Display.println("Stop");
             }
-            else if (status.word == "x")
+            else if (keyStr == "x")
             {
                 sendCommand(CMD_EMERGENCY_STOP, 0);
                 M5Cardputer.Display.println("EMERGENCY!");
