@@ -22,19 +22,15 @@ public:
 
     // Manual servo control
     void setServo(int id, double target);
-    void reverseServo(int id);
-    double getServo(int id);
     void setTrims(int t0, int t1, int t2, int t3, int t4, int t5, int t6, int t7);
 
     // Oscillator-based movements
     void walk(int steps = 1, int period = 900, bool reverse = false);
     void turn(int steps = 1, int period = 900, bool leftTurn = true);
-    void moveServos(int time, double target[8]);
     void execute(int steps, int period[8], int amplitude[8], int offset[8], int phase[8]);
 
     // Movement patterns
     void jump();
-    void home_position();
     void lateral_fuerte(bool left, int steps, int period);
     void moonwalk(int steps, int period, bool reverse);
 
@@ -53,7 +49,6 @@ private:
     bool _isMoving;
 
     double degToPulse(int degrees);
-    void _final_position(int time, double target[8]);
 };
 
 #endif

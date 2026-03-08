@@ -5,17 +5,48 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(); // 0x40
 
 // Depending on your servo make, the pulse width min and max may vary, you want to tweak these as necessary to prevent damage to your servos. You will likely need to
 // adjust these as per your servo's specifications, which commonly are around 500-2400 microseconds. The 'map' function is used to convert from degrees to pulse length.
-#define SERVOMIN 150  // This is the 'minimum' pulse length count (out of 4096)
-#define SERVOMAX 600  // This is the 'maximum' pulse length count (out of 4096)
-#define SERVO_FREQ 50 // Analog servos run at ~50 Hz updates, digital at ~333 Hz
+#define SERVOMIN 150  // This is the 'minimum' pulse length count (out of 4096) ~1000µs
+#define SERVOMAX 600  // This is the 'maximum' pulse length count (out of 4096) ~2000µs
+#define SERVO_FREQ 50 // Standard servo frequency for MG90S digital servos
 
 void StackKame::init()
 {
-    pwm.begin();
+    // Initialize PWM driver
+    Serial.println("  PWM: Starting initialization...");
+    delay(100);  // Let I2C bus settle
+    
+    // Simple single check for PWM wing at 0x40
+    Serial.println("  PWM: Checking for PWM wing at 0x40...");
+    Wire.beginTransmission(0x40);
+    int error = Wire.endTransmission();
+    if (error == 0) {
+        Serial.println("  PWM: Device ACK received at 0x40");
+    } else {
+        Serial.print("  PWM: WARNING - Error code ");
+        Serial.print(error);
+        Serial.println(" when checking 0x40");
+        Serial.println("  PWM: Attempting initialization anyway...");
+    }
+    delay(100);
+    
+    Serial.println("  PWM: Calling pwm.begin()...");
+    if (!pwm.begin()) {
+        Serial.println("  PWM: ERROR - pwm.begin() returned false");
+    } else {
+        Serial.println("  PWM: pwm.begin() succeeded");
+    }
+    delay(100);
+    
+    Serial.println("  PWM: Setting oscillator frequency to 27MHz...");
     pwm.setOscillatorFrequency(27000000);
+    delay(100);
+    
+    Serial.println("  PWM: Setting PWM frequency to 50 Hz...");
     pwm.setPWMFreq(SERVO_FREQ);
+    delay(100);
 
     // Initialize trim values to zero
+    Serial.println("  Initializing trim values...");
     for (int i = 0; i < 8; i++)
     {
         trim[i] = 0;
@@ -25,50 +56,100 @@ void StackKame::init()
 
     _isMoving = false;
 
-    // Set servos to home position
-    home();
+    Serial.println("  Moving to home position...");
+    // Temporarily disabled to debug boot loop - will be called by setup() after all init complete
+    // home();
+    Serial.println("StackKame servo controller ready");
 }
 
 void StackKame::zero()
 {
-    for (int i = 0; i < 8; i++)
+    Serial.println("    zero(): Setting all servos to 90 degrees...");
+    for (int i = 0; i < 8; i++) {
+        Serial.print("      Servo ");
+        Serial.print(i);
+        Serial.println(": 90");
         setServo(i, 90.0);
+        delay(10);
+    }
+    Serial.println("    zero(): Complete");
 }
 
 void StackKame::home()
 {
+    Serial.println("    home(): Setting home position...");
     int ap = 20;
     int hi = 35;
     int home_position[8] = {90 + ap, 90 - ap, 90 - hi, 90 + hi, 90 - ap, 90 + ap, 90 + hi, 90 - hi};
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < 8; i++) {
+        Serial.print("      Servo ");
+        Serial.print(i);
+        Serial.print(": ");
+        Serial.println(home_position[i]);
         setServo(i, home_position[i]);
-}
-
-void StackKame::reverseServo(int id)
-{
-    if (reverse[id])
-        reverse[id] = 0;
-    else
-        reverse[id] = 1;
+        delay(10);
+    }
+    Serial.println("    home(): Complete");
 }
 
 void StackKame::setServo(int id, double target)
 {
+    // Bounds check: constrain target to safe servo range
+    if (id < 0 || id > 7) {
+        Serial.print("WARNING: Servo ID out of range: ");
+        Serial.println(id);
+        return;
+    }
+    
+    double constrainedTarget = constrain(target, 0.0, 180.0);
+    if (constrainedTarget != target) {
+        Serial.print("WARNING: Servo ");
+        Serial.print(id);
+        Serial.print(" target clamped from ");
+        Serial.print(target);
+        Serial.print(" to ");
+        Serial.println(constrainedTarget);
+    }
+    
+    int pulseValue = degToPulse(constrainedTarget + trim[id]);
+    // Clamp pulse value to safe PWM output range
+    pulseValue = constrain(pulseValue, SERVOMIN, SERVOMAX);
+    
+    Serial.print("        setServo(");
+    Serial.print(id);
+    Serial.print(", ");
+    Serial.print(target);
+    Serial.print(") -> pulse=");
+    Serial.println(pulseValue);
+    
+    // Write to PWM driver and check return code
+    uint8_t result = 0;
     if (!reverse[id])
-        pwm.setPWM(id, 0, degToPulse(target + trim[id]));
+        result = pwm.setPWM(id, 0, pulseValue);
     else
-        pwm.setPWM(id, 0, degToPulse(180 - target + trim[id]));
-    _servo_position[id] = target;
-}
-
-double StackKame::getServo(int id)
-{
-    return _servo_position[id];
+        result = pwm.setPWM(id, 0, degToPulse(180 - constrainedTarget + trim[id]));
+    
+    if (result != 0) {
+        Serial.print("          ERROR: PWM write failed with code ");
+        Serial.println(result);
+    }
+    
+    _servo_position[id] = constrainedTarget;
 }
 
 double StackKame::degToPulse(int degrees)
 {
-    return map(degrees, 0, 180, SERVOMIN, SERVOMAX);
+    int pulse = map(degrees, 0, 180, SERVOMIN, SERVOMAX);
+    Serial.print("          degToPulse(");
+    Serial.print(degrees);
+    Serial.print("°) = ");
+    Serial.print(pulse);
+    Serial.print(" (min=");
+    Serial.print(SERVOMIN);
+    Serial.print(", max=");
+    Serial.print(SERVOMAX);
+    Serial.println(")");
+    return pulse;
 }
 
 void StackKame::setTrims(int t0, int t1, int t2, int t3, int t4, int t5, int t6, int t7)
@@ -104,38 +185,6 @@ void StackKame::stopMovement()
     for (int i = 0; i < 8; i++)
     {
         oscillator[i].stop();
-    }
-}
-
-void StackKame::moveServos(int time, double target[8])
-{
-    _final_position(time, target);
-}
-
-void StackKame::_final_position(int time, double target[8])
-{
-    if (time > 10)
-    {
-        for (int i = 0; i < 8; i++)
-        {
-            double startPos = _servo_position[i];
-            double delta = target[i] - startPos;
-            int steps = time / 10;
-
-            for (int step = 0; step <= steps; step++)
-            {
-                double pos = startPos + (delta * step / steps);
-                setServo(i, pos);
-                delay(10);
-            }
-        }
-    }
-    else
-    {
-        for (int i = 0; i < 8; i++)
-        {
-            setServo(i, target[i]);
-        }
     }
 }
 
@@ -291,17 +340,16 @@ void StackKame::lateral_fuerte(bool left, int steps, int period)
 
 void StackKame::jump()
 {
-    double up[8] = {90, 120, 90, 120, 90, 120, 90, 120};
-    double down[8] = {90, 60, 90, 60, 90, 60, 90, 60};
-
-    moveServos(200, up);
+    // Quick up-down motion using direct servo calls
+    for (int i = 0; i < 8; i++) {
+        setServo(i, (i % 2 == 0) ? 90 : 120);  // Hips stay, feet up
+    }
     delay(200);
-    moveServos(100, down);
+    
+    for (int i = 0; i < 8; i++) {
+        setServo(i, (i % 2 == 0) ? 90 : 60);   // Feet down
+    }
     delay(100);
-    home();
-}
-
-void StackKame::home_position()
-{
+    
     home();
 }

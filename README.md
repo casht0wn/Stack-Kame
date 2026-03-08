@@ -25,28 +25,24 @@ Servo 7: Front Right Foot
 
 ## Communication Protocols
 
-### 1. I2C Slave Mode (for M5Stack Stack-Chan)
+### 1. ESP-NOW Wireless Control
 
-- **Address**: 0x50
-- **SDA Pin**: GPIO 21
-- **SCL Pin**: GPIO 20
+- **Format**: 2-byte commands
+- **Controllers**: M5Stack Cardputer, M5Stack Stack-Chan, or any ESP32 device
+- **Pairing**: Auto-accepts commands from any sender (no MAC whitelist)
+- **Range**: ~100m line-of-sight (typical ESP-NOW range)
 
-**Write Command Format**:
+**Command Format**:
 - Byte 0: Command type (see command table below)
 - Byte 1: Command value (typically number of steps)
 
-**Read Status Format**:
-- Byte 0: Status byte
-  - Bit 0: Emergency stop active (1) or not (0)
-  - Bit 1: Low battery warning (1) or not (0)
-  - Bit 2: Command in queue (1) or not (0)
+**Example (Arduino)**:
+```cpp
+uint8_t command[2] = {0x02, 5};  // Walk forward 5 steps
+esp_now_send(robotMAC, command, 2);
+```
 
-### 2. ESP-NOW (for M5Stack Cardputer)
-
-- **Format**: Same as I2C (2-byte commands)
-- **Pairing**: Auto-accepts commands from any sender (no MAC whitelist yet)
-
-### 3. Serial Debugging (USB)
+### 2. Serial Debugging (USB)
 
 - **Baud Rate**: 115200
 - **Interactive Commands**:
@@ -132,21 +128,23 @@ pio device monitor
 
 ## Example Usage
 
-### From Stack-Chan (I2C)
+### Example Usage
 
 ```cpp
-// Stack-Chan code example
-Wire.beginTransmission(0x50);
-Wire.write(0x02); // Walk forward
-Wire.write(5);    // 5 steps
-Wire.endTransmission();
+// From any ESP32 controller (Cardputer or Stack-Chan)
+uint8_t command[2] = {0x02, 5}; // Walk forward 5 steps
+esp_now_send(robotMAC, command, 2);
 ```
 
-### From Cardputer (ESP-NOW)
+```cpp
+// Turn left 3 steps
+uint8_t command[2] = {0x04, 3};
+esp_now_send(robotMAC, command, 2);
+```
 
 ```cpp
-// Cardputer code example
-uint8_t command[2] = {0x04, 3}; // Turn left 3 steps
+// Jump
+uint8_t command[2] = {0x08, 0};
 esp_now_send(robotMAC, command, 2);
 ```
 

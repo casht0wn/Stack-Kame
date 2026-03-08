@@ -1,5 +1,9 @@
 # Stack Kame Command Protocol Reference
 
+> **Note**: Stack Kame uses ESP-NOW wireless protocol for all control commands.
+> Both M5Stack Cardputer and Stack-Chan can control the robot wirelessly.
+> Previous I2C slave mode has been removed to simplify bus architecture.
+
 ## Quick Command Reference
 
 | Hex  | Dec | Name | Description | Value Range |
@@ -48,24 +52,18 @@
 - **Power**: High
 - **Best for**: Celebration, attention-getting
 
-## Status Byte (I2C Read)
+## Status Monitoring
 
-When Stack-Chan requests status from the robot:
+Status information is available via serial monitor output. The robot logs:
+- Battery voltage and percentage every 10 seconds
+- Command reception and execution
+- Movement state changes
+- Emergency stop status
 
-```
-Bit 7-3: Reserved (0)
-Bit 2: Command in queue (1 = has pending commands)
-Bit 1: Low battery (1 = battery below threshold)
-Bit 0: Emergency stop (1 = e-stop active)
-```
-
-Example status interpretations:
-- `0x00` = Normal, idle
-- `0x01` = Emergency stop active
-- `0x02` = Low battery warning
-- `0x04` = Has commands queued
-- `0x05` = Emergency stop + commands queued
-- `0x06` = Low battery + commands queued
+Internal status tracking:
+- Emergency stop active (triggered by command 0xFF)
+- Low battery warning (below threshold)
+- Command queue status (0-16 pending commands)
 
 ## Timing Guidelines
 
@@ -142,27 +140,31 @@ Turn Left (0x04, 6) // Head back
 
 ## Communication Examples
 
-### I2C Write (2 bytes)
+### ESP-NOW Command Format (2 bytes)
 ```
-Start Condition
-Address: 0x50 (Write)
-Data[0]: Command Type
-Data[1]: Value
-Stop Condition
+Data[0]: Command Type (0x01-0xFF)
+Data[1]: Value (0-255)
 ```
 
-### I2C Read (1 byte)
-```
-Start Condition
-Address: 0x50 (Read)
-Data[0]: Status Byte
-Stop Condition
+**Example in Arduino (Cardputer/Stack-Chan):**
+```cpp
+uint8_t command[2];
+command[0] = 0x02;  // Walk forward
+command[1] = 5;     // 5 steps
+
+esp_now_send(robotMAC, command, 2);
 ```
 
-### ESP-NOW (2 bytes)
+**Walk forward 3 steps:**
 ```
-Data[0]: Command Type
-Data[1]: Value
+Byte 0: 0x02
+Byte 1: 0x03
+```
+
+**Emergency stop:**
+```
+Byte 0: 0xFF
+Byte 1: 0x00
 ```
 
 ## Debugging via Serial

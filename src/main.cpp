@@ -6,8 +6,7 @@
 #include <Preferences.h>
 #include "stackkame.h"
 
-// I2C Slave Configuration
-#define I2C_SLAVE_ADDR 0x50
+// I2C Master Configuration (for PWM wing only)
 #define I2C_SDA 21
 #define I2C_SCL 20
 
@@ -36,8 +35,6 @@ float batteryVoltage = 0.0;
 bool lowBattery = false;
 
 // Function declarations
-void onI2CReceive(int numBytes);
-void onI2CRequest();
 void onESPNowReceive(const uint8_t *mac, const uint8_t *data, int len);
 bool enqueueCommand(byte type, byte value);
 bool dequeueCommand(Command &cmd);
@@ -49,52 +46,64 @@ void saveCalibration();
 void setup()
 {
   Serial.begin(115200);
-  while (!Serial && millis() < 3000)
-    ; // Wait up to 3 seconds for serial
-  Serial.println("Stack Kame Quadruped Robot Initializing...");
+  while (!Serial && millis() < 3000);
+  Serial.println("\n\nStack Kame Boot Starting...");
+  delay(500);
 
   // Initialize preferences for calibration storage
+  Serial.println("[1/5] Initializing preferences...");
   preferences.begin("stackkame", false);
+  delay(100);
 
-  // Initialize I2C
-  Wire.begin(I2C_SDA, I2C_SCL);
+  // Initialize I2C master for PWM and battery monitor
+  Serial.println("[2/5] Initializing I2C master on pins 21(SDA), 20(SCL)...");
+  Wire.begin(21, 20);  // Master mode first
+  Wire.setClock(50000);  // 50kHz for maximum reliability with longer wires
+  Serial.println("  I2C clock set to 50kHz");
+  delay(200);  // Give bus time to settle
 
   // Initialize MAX17048 battery monitor
-  if (!maxlipo.begin(&Wire))
-  {
-    Serial.println("Warning: Failed to find MAX17048 battery monitor");
+  Serial.println("[3/5] Checking battery monitor at 0x36...");
+  unsigned long timeout = millis() + 2000;  // 2 second timeout
+  while (!maxlipo.begin(&Wire) && millis() < timeout) {
+    delay(100);
   }
-  else
-  {
+  if (maxlipo.begin(&Wire)) {
     Serial.println("Battery monitor initialized");
+  } else {
+    Serial.println("WARNING: Battery monitor not found (continuing anyway)");
   }
+  delay(100);
 
-  // Initialize StackKame
-  Serial.println("Initializing servo controller...");
+  // Initialize StackKame servo controller
+  Serial.println("[4/5] Initializing servo controller...");
   kame.init();
+  delay(100);
+
+  // Set servos to home position
+  Serial.println("[4b/5] Moving servos to home position...");
+  kame.home();
+  delay(500);
 
   // Load calibration from preferences
+  Serial.println("[5/5] Loading calibration...");
   loadCalibration();
+  delay(100);
 
-  // Setup I2C slave mode for Stack-Chan communication
-  Wire.onReceive(onI2CReceive);
-  Wire.onRequest(onI2CRequest);
-
-  // Initialize ESP-NOW for Cardputer communication
+  // Initialize ESP-NOW for wireless control (Cardputer + Stack-Chan)
+  Serial.println("Initializing ESP-NOW...");
   WiFi.mode(WIFI_STA);
-  if (esp_now_init() != ESP_OK)
-  {
+  if (esp_now_init() != ESP_OK) {
     Serial.println("Error initializing ESP-NOW");
-  }
-  else
-  {
+  } else {
     Serial.println("ESP-NOW initialized");
     esp_now_register_recv_cb(onESPNowReceive);
   }
+  delay(100);
 
-  Serial.println("Stack Kame Ready!");
-  Serial.println("Waiting for commands...");
-  Serial.println("Serial commands: h=home, z=zero, s=stop, c=calibrate");
+  Serial.println("\n=== Stack Kame Ready ===");
+  Serial.println("Serial commands: h=home, z=zero, w=walk, t=turn, s=stop, r=resume, q=queue");
+  Serial.println("Waiting for commands...\n");
 }
 
 void loop()
@@ -169,51 +178,7 @@ void loop()
   delay(10); // Small delay to prevent overwhelming the system
 }
 
-// I2C Receive Callback - called when Stack-Chan sends data
-void onI2CReceive(int numBytes)
-{
-  if (numBytes >= 2)
-  {
-    byte cmdType = Wire.read();
-    byte cmdValue = Wire.read();
-
-    // Consume remaining bytes
-    while (Wire.available())
-    {
-      Wire.read();
-    }
-
-    Serial.print("I2C Command received: 0x");
-    Serial.print(cmdType, HEX);
-    Serial.print(" Value: ");
-    Serial.println(cmdValue);
-
-    enqueueCommand(cmdType, cmdValue);
-  }
-}
-
-// I2C Request Callback - called when Stack-Chan requests status
-void onI2CRequest()
-{
-  byte status = 0x00;
-
-  if (emergencyStop)
-  {
-    status |= 0x01; // Bit 0: Emergency stop
-  }
-  if (lowBattery)
-  {
-    status |= 0x02; // Bit 1: Low battery
-  }
-  if (queueCount > 0)
-  {
-    status |= 0x04; // Bit 2: Command in queue
-  }
-
-  Wire.write(status);
-}
-
-// ESP-NOW Receive Callback - called when Cardputer sends data
+// ESP-NOW Receive Callback - receives commands from Cardputer or Stack-Chan
 void onESPNowReceive(const uint8_t *mac, const uint8_t *data, int len)
 {
   if (len >= 2)
