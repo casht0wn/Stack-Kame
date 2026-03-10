@@ -1,14 +1,9 @@
 #include <Arduino.h>
 #include <Wire.h>
-#include <Adafruit_MAX1704X.h>
 #include <esp_now.h>
 #include <WiFi.h>
 #include <Preferences.h>
 #include "stackkame.h"
-
-// I2C Master Configuration (for PWM wing only)
-#define I2C_SDA 21
-#define I2C_SCL 20
 
 // Command Queue
 #define QUEUE_SIZE 16
@@ -26,27 +21,22 @@ int queueCount = 0;
 
 // Global objects
 StackKame kame;
-Adafruit_MAX17048 maxlipo;
 Preferences preferences;
 
 // State variables
 bool emergencyStop = false;
-float batteryVoltage = 0.0;
-bool lowBattery = false;
 
 // Function declarations
 void onESPNowReceive(const uint8_t *mac, const uint8_t *data, int len);
 bool enqueueCommand(byte type, byte value);
 bool dequeueCommand(Command &cmd);
 void processCommand(byte type, byte value);
-void checkBattery();
 void loadCalibration();
 void saveCalibration();
 
 void setup()
 {
   Serial.begin(115200);
-  while (!Serial && millis() < 3000);
   Serial.println("\n\nStack Kame Boot Starting...");
   delay(500);
 
@@ -55,43 +45,23 @@ void setup()
   preferences.begin("stackkame", false);
   delay(100);
 
-  // Initialize I2C master for PWM and battery monitor
-  Serial.println("[2/5] Initializing I2C master on pins 21(SDA), 20(SCL)...");
-  Wire.begin(21, 20);  // Master mode first
-  Wire.setClock(50000);  // 50kHz for maximum reliability with longer wires
-  Serial.println("  I2C clock set to 50kHz");
-  delay(200);  // Give bus time to settle
-
-  // Initialize MAX17048 battery monitor
-  Serial.println("[3/5] Checking battery monitor at 0x36...");
-  unsigned long timeout = millis() + 2000;  // 2 second timeout
-  while (!maxlipo.begin(&Wire) && millis() < timeout) {
-    delay(100);
-  }
-  if (maxlipo.begin(&Wire)) {
-    Serial.println("Battery monitor initialized");
-  } else {
-    Serial.println("WARNING: Battery monitor not found (continuing anyway)");
-  }
-  delay(100);
-
   // Initialize StackKame servo controller
-  Serial.println("[4/5] Initializing servo controller...");
+  Serial.println("[2/5] Initializing servo controller...");
   kame.init();
   delay(100);
 
   // Set servos to home position
-  Serial.println("[4b/5] Moving servos to home position...");
+  Serial.println("[3/5] Moving servos to home position...");
   kame.home();
   delay(500);
 
   // Load calibration from preferences
-  Serial.println("[5/5] Loading calibration...");
+  Serial.println("[4/5] Loading calibration...");
   loadCalibration();
   delay(100);
 
   // Initialize ESP-NOW for wireless control (Cardputer + Stack-Chan)
-  Serial.println("Initializing ESP-NOW...");
+  Serial.println("[5/5] Initializing ESP-NOW...");
   WiFi.mode(WIFI_STA);
   if (esp_now_init() != ESP_OK) {
     Serial.println("Error initializing ESP-NOW");
@@ -119,14 +89,6 @@ void loop()
     {
       processCommand(cmd.type, cmd.value);
     }
-  }
-
-  // Check battery status periodically
-  static unsigned long lastBatteryCheck = 0;
-  if (millis() - lastBatteryCheck > 10000)
-  { // Check every 10 seconds
-    checkBattery();
-    lastBatteryCheck = millis();
   }
 
   // Handle serial commands for debugging
@@ -245,12 +207,6 @@ void processCommand(byte type, byte value)
     return;
   }
 
-  if (lowBattery && type != 0x01)
-  { // Allow stop command even on low battery
-    Serial.println("Low battery - movement restricted");
-    return;
-  }
-
   Serial.print("Processing command: 0x");
   Serial.print(type, HEX);
   Serial.print(" Value: ");
@@ -349,6 +305,20 @@ void processCommand(byte type, byte value)
   }
   break;
 
+  case 0x0B: // home position
+  {
+    Serial.println("Moving to home position");
+    kame.home();
+  }
+  break;
+
+  case 0x0C: // zero position
+  {
+    Serial.println("Zeroing servos");
+    kame.zero();
+  }
+  break;
+
   case 0xFF: // Emergency stop
     Serial.println("Emergency Stop Command!");
     emergencyStop = true;
@@ -359,33 +329,6 @@ void processCommand(byte type, byte value)
     Serial.print("Unknown command: 0x");
     Serial.println(type, HEX);
     break;
-  }
-}
-
-// Check battery voltage and set low battery flag
-void checkBattery()
-{
-  batteryVoltage = maxlipo.cellVoltage();
-  float cellPercent = maxlipo.cellPercent();
-
-  Serial.print("Battery: ");
-  Serial.print(batteryVoltage);
-  Serial.print("V (");
-  Serial.print(cellPercent);
-  Serial.println("%)");
-
-  // Set low battery flag if below 3.4V or 20%
-  if (batteryVoltage < 3.4 || cellPercent < 20.0)
-  {
-    if (!lowBattery)
-    {
-      Serial.println("WARNING: Low battery!");
-      lowBattery = true;
-    }
-  }
-  else
-  {
-    lowBattery = false;
   }
 }
 

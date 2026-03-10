@@ -13,6 +13,13 @@
 #define FRONT_RIGHT_HIP 6
 #define FRONT_RIGHT_FOOT 7
 
+/*
+    StackKame - 8-DOF quadruped robot controller using PCA9685 PWM driver and oscillator-based gait generation.
+
+    This class provides high-level movement functions (walk, turn, jump, shuffle) that internally use oscillators to create smooth, natural motions. It also includes direct servo control for manual adjustments and calibration.
+
+    The main loop should call the update() method regularly to ensure the oscillators are refreshed and the servos are updated accordingly.
+*/
 class StackKame
 {
 public:

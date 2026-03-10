@@ -56,9 +56,6 @@ void StackKame::init()
 
     _isMoving = false;
 
-    Serial.println("  Moving to home position...");
-    // Temporarily disabled to debug boot loop - will be called by setup() after all init complete
-    // home();
     Serial.println("StackKame servo controller ready");
 }
 
@@ -80,7 +77,7 @@ void StackKame::home()
     Serial.println("    home(): Setting home position...");
     int ap = 20;
     int hi = 35;
-    int home_position[8] = {90 + ap, 90 - ap, 90 - hi, 90 + hi, 90 - ap, 90 + ap, 90 + hi, 90 - hi};
+    int home_position[8] = {90 - ap, 90 - hi, 90 + ap, 90 + hi, 90 - ap, 90 - hi, 90 + ap, 90 + hi};
     for (int i = 0; i < 8; i++) {
         Serial.print("      Servo ");
         Serial.print(i);
