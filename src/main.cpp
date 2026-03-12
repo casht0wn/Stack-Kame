@@ -25,6 +25,8 @@ Preferences preferences;
 
 // State variables
 bool emergencyStop = false;
+int selectedServo = 0;
+int selectedAngle = 90;
 
 // Function declarations
 void onESPNowReceive(const uint8_t *mac, const uint8_t *data, int len);
@@ -73,6 +75,7 @@ void setup()
 
   Serial.println("\n=== Stack Kame Ready ===");
   Serial.println("Serial commands: h=home, z=zero, w=walk, t=turn, s=stop, r=resume, q=queue");
+  Serial.println("Calibration: 0-7=select servo, +=jog +5, -=jog -5, p=print selected");
   Serial.println("Waiting for commands...\n");
 }
 
@@ -133,6 +136,43 @@ void loop()
     case 'q':
       Serial.print("Queue count: ");
       Serial.println(queueCount);
+      break;
+    case '+':
+      selectedAngle = constrain(selectedAngle + 5, 0, 180);
+      Serial.print("Jog servo ");
+      Serial.print(selectedServo);
+      Serial.print(" to ");
+      Serial.println(selectedAngle);
+      kame.setServo(selectedServo, selectedAngle);
+      break;
+    case '-':
+      selectedAngle = constrain(selectedAngle - 5, 0, 180);
+      Serial.print("Jog servo ");
+      Serial.print(selectedServo);
+      Serial.print(" to ");
+      Serial.println(selectedAngle);
+      kame.setServo(selectedServo, selectedAngle);
+      break;
+    case 'p':
+      Serial.print("Selected servo: ");
+      Serial.print(selectedServo);
+      Serial.print(", angle: ");
+      Serial.println(selectedAngle);
+      break;
+    case '0':
+    case '1':
+    case '2':
+    case '3':
+    case '4':
+    case '5':
+    case '6':
+    case '7':
+      selectedServo = cmd - '0';
+      selectedAngle = 90;
+      Serial.print("Selected servo ");
+      Serial.print(selectedServo);
+      Serial.println(" (set to 90)");
+      kame.setServo(selectedServo, selectedAngle);
       break;
     }
   }
