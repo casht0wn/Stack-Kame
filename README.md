@@ -4,9 +4,9 @@ A modified mini Kame quadruped robot accessory for Stack-Chan, running on Adafru
 
 Basically...
 
-<img src="https://i.imgur.com/JFBWlCo.jpeg" alt="Mini Kame" height="240"/> ➕ 
-<img src="https://imgur.com/Mfl7U01.png" alt="Stack-Chan" height="240"/> 🟰 
-<img src="https://imgur.com/dLBtFO3.png" alt="Babyface" height="240"/>
+<img src="https://i.imgur.com/JFBWlCo.jpeg" alt="Mini Kame" height="160"/> ➕ 
+<img src="https://imgur.com/Mfl7U01.png" alt="Stack-Chan" height="160"/> 🟰 
+<img src="https://imgur.com/dLBtFO3.png" alt="Babyface" height="160"/>
 
 ## Hardware
 
