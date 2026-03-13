@@ -13,34 +13,40 @@ void StackKame::init()
 {
     // Initialize PWM driver
     Serial.println("  PWM: Starting initialization...");
-    delay(100);  // Let I2C bus settle
-    
+    delay(100); // Let I2C bus settle
+
     // Simple single check for PWM wing at 0x40
     Serial.println("  PWM: Checking for PWM wing at 0x40...");
     Wire.beginTransmission(0x40);
     int error = Wire.endTransmission();
-    if (error == 0) {
+    if (error == 0)
+    {
         Serial.println("  PWM: Device ACK received at 0x40");
-    } else {
+    }
+    else
+    {
         Serial.print("  PWM: WARNING - Error code ");
         Serial.print(error);
         Serial.println(" when checking 0x40");
         Serial.println("  PWM: Attempting initialization anyway...");
     }
     delay(100);
-    
+
     Serial.println("  PWM: Calling pwm.begin()...");
-    if (!pwm.begin()) {
+    if (!pwm.begin())
+    {
         Serial.println("  PWM: ERROR - pwm.begin() returned false");
-    } else {
+    }
+    else
+    {
         Serial.println("  PWM: pwm.begin() succeeded");
     }
     delay(100);
-    
+
     Serial.println("  PWM: Setting oscillator frequency to 27MHz...");
     pwm.setOscillatorFrequency(27000000);
     delay(100);
-    
+
     Serial.println("  PWM: Setting PWM frequency to 50 Hz...");
     pwm.setPWMFreq(SERVO_FREQ);
     delay(100);
@@ -55,7 +61,7 @@ void StackKame::init()
     }
     reverse[FRONT_LEFT_HIP] = true;
     reverse[FRONT_LEFT_FOOT] = true;
-    reverse[BACK_RIGHT_HIP] = true; 
+    reverse[BACK_RIGHT_HIP] = true;
     reverse[BACK_RIGHT_FOOT] = true;
 
     _isMoving = false;
@@ -66,7 +72,8 @@ void StackKame::init()
 void StackKame::zero()
 {
     Serial.println("    zero(): Setting all servos to 90 degrees...");
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 8; i++)
+    {
         Serial.print("      Servo ");
         Serial.print(i);
         Serial.println(": 90");
@@ -79,10 +86,9 @@ void StackKame::zero()
 void StackKame::home()
 {
     Serial.println("    home(): Setting home position...");
-    int ap = 20;
-    int hi = 35;
-    int home_position[8] = {90 + ap, 90 + hi, 90 + ap, 90 + hi, 90 + ap, 90 + hi, 90 + ap, 90 + hi};
-    for (int i = 0; i < 8; i++) {
+    int home_position[8] = {130, 90, 130, 90, 130, 90, 130, 90};
+    for (int i = 0; i < 8; i++)
+    {
         Serial.print("      Servo ");
         Serial.print(i);
         Serial.print(": ");
@@ -101,7 +107,8 @@ void StackKame::home()
 void StackKame::setServo(int id, double target)
 {
     // Bounds check: constrain target to safe servo range
-    if (id < 0 || id > 7) {
+    if (id < 0 || id > 7)
+    {
         Serial.print("WARNING: Servo ID out of range: ");
         Serial.println(id);
         return;
@@ -109,12 +116,13 @@ void StackKame::setServo(int id, double target)
 
     // Apply conservative joint-class limits to prevent body strikes while tuning.
     bool isHipJoint = (id == FRONT_LEFT_HIP || id == BACK_LEFT_HIP || id == BACK_RIGHT_HIP || id == FRONT_RIGHT_HIP);
-    double minAngle = isHipJoint ? 55.0 : 50.0;
-    double maxAngle = isHipJoint ? 125.0 : 130.0;
+    double minAngle = isHipJoint ? 55.0 : 40.0;
+    double maxAngle = isHipJoint ? 135.0 : 120.0;
 
     double constrainedTarget = constrain(target, 0.0, 180.0);
     constrainedTarget = constrain(constrainedTarget, minAngle, maxAngle);
-    if (constrainedTarget != target) {
+    if (constrainedTarget != target)
+    {
         Serial.print("SOFT_LIMIT: Servo ");
         Serial.print(id);
         Serial.print(" clamped from ");
@@ -122,30 +130,31 @@ void StackKame::setServo(int id, double target)
         Serial.print(" to ");
         Serial.println(constrainedTarget);
     }
-    
+
     int pulseValue = degToPulse(constrainedTarget + trim[id]);
     // Clamp pulse value to safe PWM output range
     pulseValue = constrain(pulseValue, SERVOMIN, SERVOMAX);
-    
+
     Serial.print("        setServo(");
     Serial.print(id);
     Serial.print(", ");
     Serial.print(target);
     Serial.print(") -> pulse=");
     Serial.println(pulseValue);
-    
+
     // Write to PWM driver and check return code
     uint8_t result = 0;
     if (!reverse[id])
         result = pwm.setPWM(id, 0, pulseValue);
     else
         result = pwm.setPWM(id, 0, degToPulse(180 - constrainedTarget + trim[id]));
-    
-    if (result != 0) {
+
+    if (result != 0)
+    {
         Serial.print("          ERROR: PWM write failed with code ");
         Serial.println(result);
     }
-    
+
     _servo_position[id] = constrainedTarget;
 }
 
@@ -185,7 +194,7 @@ void StackKame::update()
             if (oscillator[i].isRunning())
             {
                 double pos = oscillator[i].refresh();
-                setServo(i, pos); /// Update servo position based on oscillator output. <- pos NEEDS to be a degree value between 0 and 180, so ensure your oscillator is configured to output in that range or apply a mapping here. 
+                setServo(i, pos); /// Update servo position based on oscillator output. <- pos NEEDS to be a degree value between 0 and 180, so ensure your oscillator is configured to output in that range or apply a mapping here.
             }
         }
     }
@@ -237,20 +246,20 @@ void StackKame::execute(int steps, int period[8], int amplitude[8], int offset[8
 void StackKame::walk(int steps, int period, bool reverse)
 {
     int amplitude[8] = {30, 20, 30, 20, 30, 20, 30, 20};
-    int offset[8] = {90, 90, 90, 90, 90, 90, 90, 90};
+    int offset[8] = {130, 90, 130, 90, 130, 90, 130, 90}; // Home position offsets
     int phase[8];
 
     if (!reverse)
     {
         // Diagonal gait: FL+FR lift while BL+BR support, then alternate.
-        int tempPhase[8] = {0, 90, 180, 270, 180, 270, 0, 90};
+        int tempPhase[8] = {0, 90, 0, 270, 180, 90, 180, 270}; // Testest working diagonal gait pattern, THIS IS THE CORRECT ONE FOR WALKING FORWARD
         for (int i = 0; i < 8; i++)
             phase[i] = tempPhase[i];
     }
     else
     {
-        // Reverse diagonal gait.
-        int tempPhase[8] = {180, 270, 0, 90, 0, 90, 180, 270};
+        // Reverse diagonal gait:
+        int tempPhase[8] = {180, 270, 180, 90, 0, 270, 0, 90};
         for (int i = 0; i < 8; i++)
             phase[i] = tempPhase[i];
     }
@@ -361,15 +370,17 @@ void StackKame::lateral_fuerte(bool left, int steps, int period)
 void StackKame::jump()
 {
     // Quick up-down motion using direct servo calls
-    for (int i = 0; i < 8; i++) {
-        setServo(i, (i % 2 == 0) ? 90 : 120);  // Hips stay, feet up
+    for (int i = 0; i < 8; i++)
+    {
+        setServo(i, (i % 2 == 0) ? 90 : 120); // Hips stay, feet up
     }
     delay(200);
-    
-    for (int i = 0; i < 8; i++) {
-        setServo(i, (i % 2 == 0) ? 90 : 60);   // Feet down
+
+    for (int i = 0; i < 8; i++)
+    {
+        setServo(i, (i % 2 == 0) ? 90 : 60); // Feet down
     }
     delay(100);
-    
+
     home();
 }

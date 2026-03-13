@@ -4,8 +4,11 @@
 // Send commands to Stack Kame via ESP-NOW
 
 #include <esp_now.h>
+#include <esp_wifi.h>
 #include <WiFi.h>
 #include <M5Cardputer.h>
+
+#define ESPNOW_CHANNEL 1
 
 // Stack Kame MAC Address (update with your robot's MAC)
 uint8_t robotMAC[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; // Update this!
@@ -41,9 +44,30 @@ void setup()
     M5Cardputer.Display.println("Stack Kame Control");
 
     Serial.begin(115200);
+    delay(200);
+
+    if (robotMAC[0] == 0x00 && robotMAC[1] == 0x00 && robotMAC[2] == 0x00 &&
+        robotMAC[3] == 0x00 && robotMAC[4] == 0x00 && robotMAC[5] == 0x00)
+    {
+        Serial.println("ERROR: robotMAC is still 00:00:00:00:00:00. Update robotMAC first.");
+        M5Cardputer.Display.println("Set robotMAC!");
+        return;
+    }
 
     // Initialize WiFi and ESP-NOW
     WiFi.mode(WIFI_STA);
+    WiFi.disconnect();
+    WiFi.setSleep(false);
+
+    uint8_t localMac[6];
+    WiFi.macAddress(localMac);
+    Serial.printf("Cardputer STA MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
+                  localMac[0], localMac[1], localMac[2], localMac[3], localMac[4], localMac[5]);
+
+    esp_wifi_set_promiscuous(true);
+    esp_wifi_set_channel(ESPNOW_CHANNEL, WIFI_SECOND_CHAN_NONE);
+    esp_wifi_set_promiscuous(false);
+    Serial.printf("ESP-NOW channel locked to: %d\n", ESPNOW_CHANNEL);
 
     if (esp_now_init() != ESP_OK)
     {
@@ -55,7 +79,7 @@ void setup()
 
     // Register peer
     memcpy(peerInfo.peer_addr, robotMAC, 6);
-    peerInfo.channel = 0;
+    peerInfo.channel = ESPNOW_CHANNEL;
     peerInfo.encrypt = false;
 
     if (esp_now_add_peer(&peerInfo) != ESP_OK)
@@ -64,6 +88,8 @@ void setup()
         return;
     }
 
+    Serial.printf("Target robot MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
+                  robotMAC[0], robotMAC[1], robotMAC[2], robotMAC[3], robotMAC[4], robotMAC[5]);
     Serial.println("Ready to send commands!");
 }
 
@@ -97,10 +123,14 @@ void loop()
             Keyboard_Class::KeysState status = M5Cardputer.Keyboard.keysState();
 
             String keyStr = "";
-            for (auto i : status.word) {
-                if (keyStr != "") {
+            for (auto i : status.word)
+            {
+                if (keyStr != "")
+                {
                     keyStr = keyStr + "+" + i;
-                } else {
+                }
+                else
+                {
                     keyStr = i;
                 }
             }

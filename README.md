@@ -7,7 +7,7 @@ A modified mini Kame quadruped robot accessory for Stack-Chan, running on Adafru
 - **Microcontroller**: Adafruit Feather ESP32-S3 (no PSRAM)
 - **Servo Controller**: Adafruit 8-channel PWM Servo FeatherWing (PCA9685)
 - **Servos**: 8x MG90S digital servos
-- **Battery Monitor**: MAX17048 LiPo fuel gauge
+- **Battery Monitor**: ~~MAX17048 LiPo fuel gauge~~ Not viable: will have to work out a setup with a simple voltage divider going to an analog pin on the feather
 - **Physical Design**: Based on miniKame quadruped
 
 ## Servo Configuration
@@ -94,14 +94,13 @@ The robot uses an oscillator-based movement system inspired by the original mini
 - **Queue Size**: 16 commands
 - **Processing**: First-come-first-served (fair arbitration)
 - **Priority**: Emergency stop (0xFF) interrupts immediately
-- Commands from both I2C and ESP-NOW are queued together
 
-## Battery Management
+## Battery Management - Not *currently* working (pun intended).
 
 - **Low Battery Threshold**: 3.4V or 20% charge
 - **Behavior**: Restricts movement commands when battery is low
 - **Monitoring**: Checks every 10 seconds
-- **Status**: Reported via I2C status byte and serial output
+- **Status**: Reported via serial output or can be polled from ESP-NOW
 
 ## Servo Calibration
 
@@ -113,6 +112,10 @@ preferences.putInt("trim0", value); // -50 to +50 typical range
 ...
 preferences.putInt("trim7", value);
 ```
+
+- **numbers 0..7**: select a servo
+- **+/-**: jog servo forward or back
+- **p**: print currently selected servo
 
 **TODO**: Implement interactive calibration interface via serial
 

@@ -1,9 +1,12 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <esp_now.h>
+#include <esp_wifi.h>
 #include <WiFi.h>
 #include <Preferences.h>
 #include "stackkame.h"
+
+#define ESPNOW_CHANNEL 1
 
 // Command Queue
 #define QUEUE_SIZE 16
@@ -39,6 +42,11 @@ void saveCalibration();
 void setup()
 {
   Serial.begin(115200);
+  unsigned long serialWaitStart = millis();
+  while (!Serial && (millis() - serialWaitStart < 5000))
+  {
+    delay(10);
+  }
   Serial.println("\n\nStack Kame Boot Starting...");
   delay(500);
 
@@ -65,11 +73,35 @@ void setup()
   // Initialize ESP-NOW for wireless control (Cardputer + Stack-Chan)
   Serial.println("[5/5] Initializing ESP-NOW...");
   WiFi.mode(WIFI_STA);
-  if (esp_now_init() != ESP_OK) {
+  WiFi.disconnect();
+  WiFi.setSleep(false);
+
+  uint8_t localMac[6];
+  WiFi.macAddress(localMac);
+  Serial.printf("Robot STA MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
+                localMac[0], localMac[1], localMac[2], localMac[3], localMac[4], localMac[5]);
+
+  esp_wifi_set_promiscuous(true);
+  esp_wifi_set_channel(ESPNOW_CHANNEL, WIFI_SECOND_CHAN_NONE);
+  esp_wifi_set_promiscuous(false);
+  Serial.printf("ESP-NOW channel locked to: %d\n", ESPNOW_CHANNEL);
+
+  if (esp_now_init() != ESP_OK)
+  {
     Serial.println("Error initializing ESP-NOW");
-  } else {
+  }
+  else
+  {
     Serial.println("ESP-NOW initialized");
-    esp_now_register_recv_cb(onESPNowReceive);
+    esp_err_t cbResult = esp_now_register_recv_cb(onESPNowReceive);
+    if (cbResult != ESP_OK)
+    {
+      Serial.printf("ESP-NOW receive callback registration failed: %d\n", cbResult);
+    }
+    else
+    {
+      Serial.println("ESP-NOW receive callback registered");
+    }
   }
   delay(100);
 
