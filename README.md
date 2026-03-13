@@ -2,6 +2,12 @@
 
 A modified mini Kame quadruped robot accessory for Stack-Chan, running on Adafruit Feather ESP32-S3 (no PSRAM) with an 8-channel PWM servo wing.
 
+Basically...
+
+<img src="https://i.imgur.com/JFBWlCo.jpeg" alt="Mini Kame" height="240"/> ➕ 
+<img src="https://imgur.com/Mfl7U01.png" alt="Stack-Chan" height="240"/> 🟰 
+<img src="https://imgur.com/dLBtFO3.png" alt="Babyface" height="240"/>
+
 ## Hardware
 
 - **Microcontroller**: Adafruit Feather ESP32-S3 (no PSRAM)
@@ -154,9 +160,9 @@ esp_now_send(robotMAC, command, 2);
 ## Safety Features
 
 1. **Emergency Stop**: Stops all movements immediately
-2. **Low Battery Protection**: Restricts movement on low battery
+2. ~~**Low Battery Protection**: Restricts movement on low battery~~ Not yet implemented
 3. **Command Queue Overflow**: Warns if queue is full
-4. **Servo Limits**: PWM values clamped to safe range (150-600)
+4. **Servo Limits**: PWM values clamped to safe range (204-410)
 
 ## TODO / Future Enhancements
 
@@ -167,6 +173,7 @@ esp_now_send(robotMAC, command, 2);
 - [ ] Smooth movement interpolation between gaits
 - [ ] Custom choreographed dance sequences
 - [ ] OTA (Over-The-Air) firmware updates
+- [ ] New battery monitoring using voltage divider to analog pin
 
 ## Credits
 

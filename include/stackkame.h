@@ -24,6 +24,8 @@ class StackKame
 {
 public:
     void init();
+
+    // Base positioning functions
     void zero();
     void home();
 

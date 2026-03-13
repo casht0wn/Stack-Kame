@@ -9,6 +9,8 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(); // 0x40
 #define SERVOMAX 410  // This is the 'maximum' pulse length count (out of 4096) ~2000µs
 #define SERVO_FREQ 50 // Standard servo frequency for MG90S digital servos
 
+/// NOTE: Servo order is FL_HIP, FL_FOOT, BL_HIP, BL_FOOT, BR_HIP, BR_FOOT, FR_HIP, FR_FOOT (0-7)
+
 void StackKame::init()
 {
     // Initialize PWM driver
@@ -74,9 +76,6 @@ void StackKame::zero()
     Serial.println("    zero(): Setting all servos to 90 degrees...");
     for (int i = 0; i < 8; i++)
     {
-        Serial.print("      Servo ");
-        Serial.print(i);
-        Serial.println(": 90");
         setServo(i, 90.0);
         delay(10);
     }
@@ -89,21 +88,12 @@ void StackKame::home()
     int home_position[8] = {130, 90, 130, 90, 130, 90, 130, 90};
     for (int i = 0; i < 8; i++)
     {
-        Serial.print("      Servo ");
-        Serial.print(i);
-        Serial.print(": ");
-        Serial.println(home_position[i]);
         setServo(i, home_position[i]);
         delay(10);
     }
     Serial.println("    home(): Complete");
 }
 
-/**
- * setServo - Set a specific servo to a target angle with bounds checking and trim adjustment.
- * @param id: Servo ID (0-7) corresponding to specific joints
- * @param target: Desired angle in degrees (0-180) before trimming
- */
 void StackKame::setServo(int id, double target)
 {
     // Bounds check: constrain target to safe servo range
@@ -117,7 +107,7 @@ void StackKame::setServo(int id, double target)
     // Apply conservative joint-class limits to prevent body strikes while tuning.
     bool isHipJoint = (id == FRONT_LEFT_HIP || id == BACK_LEFT_HIP || id == BACK_RIGHT_HIP || id == FRONT_RIGHT_HIP);
     double minAngle = isHipJoint ? 55.0 : 40.0;
-    double maxAngle = isHipJoint ? 135.0 : 120.0;
+    double maxAngle = isHipJoint ? 170.0 : 160.0;
 
     double constrainedTarget = constrain(target, 0.0, 180.0);
     constrainedTarget = constrain(constrainedTarget, minAngle, maxAngle);
@@ -134,13 +124,6 @@ void StackKame::setServo(int id, double target)
     int pulseValue = degToPulse(constrainedTarget + trim[id]);
     // Clamp pulse value to safe PWM output range
     pulseValue = constrain(pulseValue, SERVOMIN, SERVOMAX);
-
-    Serial.print("        setServo(");
-    Serial.print(id);
-    Serial.print(", ");
-    Serial.print(target);
-    Serial.print(") -> pulse=");
-    Serial.println(pulseValue);
 
     // Write to PWM driver and check return code
     uint8_t result = 0;
@@ -161,15 +144,6 @@ void StackKame::setServo(int id, double target)
 double StackKame::degToPulse(int degrees)
 {
     int pulse = map(degrees, 0, 180, SERVOMIN, SERVOMAX);
-    Serial.print("          degToPulse(");
-    Serial.print(degrees);
-    Serial.print("°) = ");
-    Serial.print(pulse);
-    Serial.print(" (min=");
-    Serial.print(SERVOMIN);
-    Serial.print(", max=");
-    Serial.print(SERVOMAX);
-    Serial.println(")");
     return pulse;
 }
 
@@ -194,7 +168,7 @@ void StackKame::update()
             if (oscillator[i].isRunning())
             {
                 double pos = oscillator[i].refresh();
-                setServo(i, pos); /// Update servo position based on oscillator output. <- pos NEEDS to be a degree value between 0 and 180, so ensure your oscillator is configured to output in that range or apply a mapping here.
+                setServo(i, pos); /// Update servo position based on oscillator output.
             }
         }
     }
@@ -252,7 +226,7 @@ void StackKame::walk(int steps, int period, bool reverse)
     if (!reverse)
     {
         // Diagonal gait: FL+FR lift while BL+BR support, then alternate.
-        int tempPhase[8] = {0, 90, 0, 270, 180, 90, 180, 270}; // Testest working diagonal gait pattern, THIS IS THE CORRECT ONE FOR WALKING FORWARD
+        int tempPhase[8] = {0, 90, 0, 270, 180, 90, 180, 270}; // Tested working diagonal gait pattern, THIS IS THE CORRECT ONE FOR WALKING FORWARD
         for (int i = 0; i < 8; i++)
             phase[i] = tempPhase[i];
     }
@@ -274,7 +248,7 @@ void StackKame::walk(int steps, int period, bool reverse)
 void StackKame::turn(int steps, int period, bool leftTurn)
 {
     int amplitude[8] = {30, 20, 30, 20, 30, 20, 30, 20};
-    int offset[8] = {90, 90, 90, 90, 90, 90, 90, 90};
+    int offset[8] = {130, 90, 130, 90, 130, 90, 130, 90}; // Home position offsets
     int phase[8];
 
     if (leftTurn)
