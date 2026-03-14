@@ -24,6 +24,8 @@ uint8_t robotMAC[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; // Update this!
 #define CMD_JUMP 0x08
 #define CMD_SHUFFLE_LEFT 0x09
 #define CMD_SHUFFLE_RIGHT 0x0A
+#define CMD_HOME 0x0B
+#define CMD_ZERO 0x0C
 #define CMD_EMERGENCY_STOP 0xFF
 
 esp_now_peer_info_t peerInfo;
@@ -155,6 +157,17 @@ void loop()
             {
                 sendCommand(CMD_TURN_RIGHT, 2);
                 M5Cardputer.Display.println("Turn Right");
+            }
+            // Stances
+            else if (keyStr == "h")
+            {
+                sendCommand(CMD_HOME, 0);
+                M5Cardputer.Display.println("Home");
+            }
+            else if (keyStr == "z")
+            {
+                sendCommand(CMD_ZERO, 0);
+                M5Cardputer.Display.println("Zero");
             }
             // Special moves
             else if (keyStr == "j")

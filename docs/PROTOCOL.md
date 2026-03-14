@@ -18,6 +18,8 @@
 | 0x08 | 8   | JUMP | Jump in place | 0 |
 | 0x09 | 9   | SHUFFLE_L | Shuffle left | 1-255 steps |
 | 0x0A | 10  | SHUFFLE_R | Shuffle right | 1-255 steps |
+| 0x0B | 11  | HOME | Home position | 0 |
+| 0x0C | 12  | ZERO | All servos 90 degrees | 0 |
 | 0xFF | 255 | E_STOP | Emergency stop | 0 |
 
 ## Movement Characteristics
