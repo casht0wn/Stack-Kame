@@ -1,6 +1,6 @@
 # Stack Kame - Quadruped Robot Controller
 
-A modified mini Kame quadruped robot accessory for Stack-Chan, running on Adafruit Feather ESP32-S3 (no PSRAM) with an 8-channel PWM servo wing.
+A modified mini Kame quadruped robot accessory for Stack-Chan, running on Adafruit Feather ESP32-S3 (no PSRAM) with an 8-channel PWM servo wing. Could also just be a Lego-compatible platform for whatever.
 
 Basically...
 
@@ -8,13 +8,30 @@ Basically...
 <img src="https://imgur.com/Mfl7U01.png" alt="Stack-Chan" height="160"/> 🟰 
 <img src="https://imgur.com/dLBtFO3.png" alt="Babyface" height="160"/>
 
-## Hardware
+..but cute!
+
+⚠️ THIS PROJECT IS A WORK IN PROGRESS ⚠️
+
+## 🦿Hardware
 
 - **Microcontroller**: Adafruit Feather ESP32-S3 (no PSRAM)
 - **Servo Controller**: Adafruit 8-channel PWM Servo FeatherWing (PCA9685)
 - **Servos**: 8x MG90S digital servos
 - **Battery Monitor**: ~~MAX17048 LiPo fuel gauge~~ Not viable: will have to work out a setup with a simple voltage divider going to an analog pin on the feather
 - **Physical Design**: Based on miniKame quadruped
+  - 3D printed parts
+  - M3 machine screws, nuts, and nylock nuts
+  - F693ZZ flanged bearings
+  - Lego Technic Pins (part # 2780)
+
+## Firmware
+
+This project contains two PlatformIO firmware modules:
+
+- `firmware/legs-esp32s3` — gait controller for the quadruped body  
+- `firmware/controller-cardputer` — handheld remote for driving and testing  
+
+Each folder is a standalone PlatformIO project with its own `platformio.ini`.
 
 ## Servo Configuration
 
