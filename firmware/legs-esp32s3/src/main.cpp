@@ -8,6 +8,23 @@
 
 #define ESPNOW_CHANNEL 1
 
+// Command IDs shared with controller-cardputer
+#define CMD_STOP 0x01
+#define CMD_WALK_FORWARD 0x02
+#define CMD_WALK_BACKWARD 0x03
+#define CMD_TURN_LEFT 0x04
+#define CMD_TURN_RIGHT 0x05
+#define CMD_MOONWALK_FWD 0x06
+#define CMD_MOONWALK_BACK 0x07
+#define CMD_JUMP 0x08
+#define CMD_SHUFFLE_LEFT 0x09
+#define CMD_SHUFFLE_RIGHT 0x0A
+#define CMD_HOME 0x0B
+#define CMD_ZERO 0x0C
+#define CMD_CAL_SELECT_SERVO 0x0D
+#define CMD_CAL_JOG_DELTA 0x0E
+#define CMD_EMERGENCY_STOP 0xFF
+
 // Command Queue
 #define QUEUE_SIZE 16
 struct Command
@@ -108,6 +125,7 @@ void setup()
   Serial.println("\n=== Stack Kame Ready ===");
   Serial.println("Serial commands: h=home, z=zero, w=walk, t=turn, s=stop, r=resume, q=queue");
   Serial.println("Calibration: 0-7=select servo, +=jog +5, -=jog -5, p=print selected");
+  Serial.println("ESP-NOW calibration: 0x0D select servo, 0x0E jog signed delta");
   Serial.println("Waiting for commands...\n");
 }
 
@@ -286,13 +304,13 @@ void processCommand(byte type, byte value)
 
   switch (type)
   {
-  case 0x01: // Stop
+  case CMD_STOP: // Stop
     kame.stopMovement();
     kame.home();
     Serial.println("Stop & Home");
     break;
 
-  case 0x02: // Walk forward
+  case CMD_WALK_FORWARD: // Walk forward
   {
     int steps = (value > 0) ? value : 1;
     Serial.print("Walk forward ");
@@ -302,7 +320,7 @@ void processCommand(byte type, byte value)
   }
   break;
 
-  case 0x03: // Walk backward
+  case CMD_WALK_BACKWARD: // Walk backward
   {
     int steps = (value > 0) ? value : 1;
     Serial.print("Walk backward ");
@@ -312,7 +330,7 @@ void processCommand(byte type, byte value)
   }
   break;
 
-  case 0x04: // Turn left
+  case CMD_TURN_LEFT: // Turn left
   {
     int steps = (value > 0) ? value : 1;
     Serial.print("Turn left ");
@@ -322,7 +340,7 @@ void processCommand(byte type, byte value)
   }
   break;
 
-  case 0x05: // Turn right
+  case CMD_TURN_RIGHT: // Turn right
   {
     int steps = (value > 0) ? value : 1;
     Serial.print("Turn right ");
@@ -332,7 +350,7 @@ void processCommand(byte type, byte value)
   }
   break;
 
-  case 0x06: // Moonwalk forward
+  case CMD_MOONWALK_FWD: // Moonwalk forward
   {
     int steps = (value > 0) ? value : 1;
     Serial.print("Moonwalk forward ");
@@ -342,7 +360,7 @@ void processCommand(byte type, byte value)
   }
   break;
 
-  case 0x07: // Moonwalk backward
+  case CMD_MOONWALK_BACK: // Moonwalk backward
   {
     int steps = (value > 0) ? value : 1;
     Serial.print("Moonwalk backward ");
@@ -352,12 +370,12 @@ void processCommand(byte type, byte value)
   }
   break;
 
-  case 0x08: // Jump
+  case CMD_JUMP: // Jump
     Serial.println("Jump!");
     kame.jump();
     break;
 
-  case 0x09: // Lateral shuffle left
+  case CMD_SHUFFLE_LEFT: // Lateral shuffle left
   {
     int steps = (value > 0) ? value : 1;
     Serial.print("Lateral shuffle left ");
@@ -367,7 +385,7 @@ void processCommand(byte type, byte value)
   }
   break;
 
-  case 0x0A: // Lateral shuffle right
+  case CMD_SHUFFLE_RIGHT: // Lateral shuffle right
   {
     int steps = (value > 0) ? value : 1;
     Serial.print("Lateral shuffle right ");
@@ -377,21 +395,46 @@ void processCommand(byte type, byte value)
   }
   break;
 
-  case 0x0B: // home position
+  case CMD_HOME: // home position
   {
     Serial.println("Moving to home position");
     kame.home();
   }
   break;
 
-  case 0x0C: // zero position
+  case CMD_ZERO: // zero position
   {
     Serial.println("Zeroing servos");
     kame.zero();
   }
   break;
 
-  case 0xFF: // Emergency stop
+  case CMD_CAL_SELECT_SERVO:
+  {
+    selectedServo = constrain(static_cast<int>(value), 0, 7);
+    selectedAngle = 90;
+    Serial.print("Calibration select servo ");
+    Serial.println(selectedServo);
+    kame.setServo(selectedServo, selectedAngle);
+  }
+  break;
+
+  case CMD_CAL_JOG_DELTA:
+  {
+    int8_t delta = static_cast<int8_t>(value);
+    delta = constrain(static_cast<int>(delta), -20, 20);
+    selectedAngle = constrain(selectedAngle + delta, 0, 180);
+    Serial.print("Calibration jog servo ");
+    Serial.print(selectedServo);
+    Serial.print(" by ");
+    Serial.print(delta);
+    Serial.print(" -> ");
+    Serial.println(selectedAngle);
+    kame.setServo(selectedServo, selectedAngle);
+  }
+  break;
+
+  case CMD_EMERGENCY_STOP: // Emergency stop
     Serial.println("Emergency Stop Command!");
     emergencyStop = true;
     kame.stopMovement();
