@@ -5,13 +5,13 @@
 
 // Servo pin definitions for 8-channel PWM board
 #define FRONT_LEFT_HIP 0
-#define FRONT_LEFT_FOOT 1
-#define BACK_LEFT_HIP 2
-#define BACK_LEFT_FOOT 3
-#define BACK_RIGHT_HIP 4
-#define BACK_RIGHT_FOOT 5
-#define FRONT_RIGHT_HIP 6
-#define FRONT_RIGHT_FOOT 7
+#define FRONT_RIGHT_HIP 1
+#define FRONT_LEFT_FOOT 2
+#define FRONT_RIGHT_FOOT 3
+#define BACK_LEFT_HIP 4
+#define BACK_RIGHT_HIP 5
+#define BACK_LEFT_FOOT 6
+#define BACK_RIGHT_FOOT 7
 
 /*
     StackKame - 8-DOF quadruped robot controller using PCA9685 PWM driver and oscillator-based gait generation.

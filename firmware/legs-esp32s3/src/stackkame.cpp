@@ -9,7 +9,7 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(); // 0x40
 #define SERVOMAX 410  // This is the 'maximum' pulse length count (out of 4096) ~2000µs
 #define SERVO_FREQ 50 // Standard servo frequency for MG90S digital servos
 
-/// NOTE: Servo order is FL_HIP, FL_FOOT, BL_HIP, BL_FOOT, BR_HIP, BR_FOOT, FR_HIP, FR_FOOT (0-7)
+/// NOTE: Servo order is FL_HIP, FR_HIP, FL_FOOT, FR_FOOT, BL_HIP, BR_HIP, BL_FOOT, BR_FOOT (0-7)
 
 void StackKame::init()
 {
@@ -85,7 +85,7 @@ void StackKame::zero()
 void StackKame::home()
 {
     Serial.println("    home(): Setting home position...");
-    int home_position[8] = {130, 90, 130, 90, 130, 90, 130, 90};
+    int home_position[8] = {120, 100, 120, 100, 120, 100, 120, 100};
     for (int i = 0; i < 8; i++)
     {
         setServo(i, home_position[i]);
@@ -220,20 +220,20 @@ void StackKame::execute(int steps, int period[8], int amplitude[8], int offset[8
 void StackKame::walk(int steps, int period, bool reverse)
 {
     int amplitude[8] = {30, 20, 30, 20, 30, 20, 30, 20};
-    int offset[8] = {130, 90, 130, 90, 130, 90, 130, 90}; // Home position offsets
+    int offset[8] = {130, 130, 90, 90, 130, 130, 90, 90}; // Home position offsets
     int phase[8];
 
     if (!reverse)
     {
         // Diagonal gait: FL+FR lift while BL+BR support, then alternate.
-        int tempPhase[8] = {0, 90, 0, 270, 180, 90, 180, 270}; // Tested working diagonal gait pattern, THIS IS THE CORRECT ONE FOR WALKING FORWARD
+        int tempPhase[8] = {0, 180, 90, 270, 0, 180, 270, 90}; // Tested working diagonal gait pattern, THIS IS THE CORRECT ONE FOR WALKING FORWARD
         for (int i = 0; i < 8; i++)
             phase[i] = tempPhase[i];
     }
     else
     {
         // Reverse diagonal gait:
-        int tempPhase[8] = {180, 270, 180, 90, 0, 270, 0, 90};
+        int tempPhase[8] = {0, 180, 270, 90, 0, 180, 90, 270};
         for (int i = 0; i < 8; i++)
             phase[i] = tempPhase[i];
     }
@@ -247,8 +247,8 @@ void StackKame::walk(int steps, int period, bool reverse)
 
 void StackKame::turn(int steps, int period, bool leftTurn)
 {
-    int amplitude[8] = {30, 20, 30, 20, 30, 20, 30, 20};
-    int offset[8] = {130, 90, 130, 90, 130, 90, 130, 90}; // Home position offsets
+    int amplitude[8] = {30, 30, 20, 20, 30, 30, 20, 20};
+    int offset[8] = {130, 130, 90, 90, 130, 130, 90, 90}; // Home position offsets
     int phase[8];
 
     if (leftTurn)
@@ -258,7 +258,10 @@ void StackKame::turn(int steps, int period, bool leftTurn)
         amplitude[FRONT_LEFT_FOOT] = 12;
         amplitude[BACK_LEFT_HIP] = 15;
         amplitude[BACK_LEFT_FOOT] = 12;
-        int tempPhase[8] = {0, 90, 180, 270, 180, 270, 0, 90};
+        // Shift left legs together slightly to create a more natural turning effect
+        offset[FRONT_LEFT_HIP] = 150;
+        offset[BACK_LEFT_HIP] = 150;
+        int tempPhase[8] = {0, 0, 270, 90, 0, 0, 90, 270}; 
         for (int i = 0; i < 8; i++)
             phase[i] = tempPhase[i];
     }
@@ -269,7 +272,10 @@ void StackKame::turn(int steps, int period, bool leftTurn)
         amplitude[BACK_RIGHT_FOOT] = 12;
         amplitude[FRONT_RIGHT_HIP] = 15;
         amplitude[FRONT_RIGHT_FOOT] = 12;
-        int tempPhase[8] = {0, 90, 180, 270, 180, 270, 0, 90};
+        // Shift right legs together slightly to create a more natural turning effect
+        offset[BACK_RIGHT_HIP] = 150; 
+        offset[FRONT_RIGHT_HIP] = 150;
+        int tempPhase[8] = {180, 180, 270, 90, 180, 180, 90, 270}; 
         for (int i = 0; i < 8; i++)
             phase[i] = tempPhase[i];
     }
@@ -283,19 +289,19 @@ void StackKame::turn(int steps, int period, bool leftTurn)
 
 void StackKame::moonwalk(int steps, int period, bool reverse)
 {
-    int amplitude[8] = {25, 25, 25, 25, 25, 25, 25, 25};
-    int offset[8] = {0, -10, 0, -10, 0, -10, 0, -10};
+    int amplitude[8] = {0, 0, 45, 45, 0, 0, 45, 45};
+    int offset[8] = {90, 90, 90, 90, 90, 90, 90, 90};
     int phase[8];
 
     if (!reverse)
     {
-        int tempPhase[8] = {0, 120, 0, 120, 180, 240, 180, 240};
+        int tempPhase[8] = {190, 0, 180, 120, 0, 180, 180, 20};
         for (int i = 0; i < 8; i++)
             phase[i] = tempPhase[i];
     }
     else
     {
-        int tempPhase[8] = {180, 240, 180, 240, 0, 120, 0, 120};
+        int tempPhase[8] = {180, 0, 0, 290, 0, 180, 0, 300};
         for (int i = 0; i < 8; i++)
             phase[i] = tempPhase[i];
     }
@@ -315,7 +321,7 @@ void StackKame::lateral_fuerte(bool left, int steps, int period)
 
     if (left)
     {
-        int tempOffset[8] = {15, -10, 0, -10, -15, -10, 0, -10};
+        int tempOffset[8] = {60, 60, 120, 120, 60, 60, 120, 120};
         int tempPhase[8] = {0, 0, 90, 0, 0, 0, 90, 0};
         for (int i = 0; i < 8; i++)
         {
@@ -325,7 +331,7 @@ void StackKame::lateral_fuerte(bool left, int steps, int period)
     }
     else
     {
-        int tempOffset[8] = {-15, -10, 0, -10, 15, -10, 0, -10};
+        int tempOffset[8] = {60, 60, 120, 120, 60, 60, 120, 120};
         int tempPhase[8] = {0, 0, 90, 0, 0, 0, 90, 0};
         for (int i = 0; i < 8; i++)
         {
@@ -336,7 +342,7 @@ void StackKame::lateral_fuerte(bool left, int steps, int period)
 
     int periods[8];
     for (int i = 0; i < 8; i++)
-        periods[i] = period;
+        periods[i] = (i % 2 == 0) ? period : period / 2; // Faster foot movement for more dynamic effect
 
     execute(steps, periods, amplitude, offset, phase);
 }
