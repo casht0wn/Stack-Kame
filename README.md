@@ -24,6 +24,13 @@ Basically...
   - F693ZZ flanged bearings
   - Lego Technic Pins (part # 2780)
 
+I am redesigning the main body to:
+- have a lego-compatible mount on top for StackChan
+- allow the top cover to be opened without removing the legs
+- provide enough space to use an adafruit 8ch PWM wing with right angle headers
+
+<img src="images/body-redesign-progress.jpg" alt="Body redesign progress" height="480"/>
+
 ## Firmware
 
 This project contains two PlatformIO firmware modules:
