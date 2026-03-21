@@ -29,7 +29,7 @@ I am redesigning the main body to:
 - allow the top cover to be opened without removing the legs
 - provide enough space to use an adafruit 8ch PWM wing with right angle headers
 
-<img src="images/body-redesign-progress.jpg" alt="Body redesign progress" height="480"/>
+<img src="images/body-redesign-progress.jpg" alt="Body redesign progress" height="400"/>
 
 ## Firmware
 
