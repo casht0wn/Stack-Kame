@@ -17,5 +17,6 @@ static constexpr uint8_t HOME = 0x0B;
 static constexpr uint8_t ZERO = 0x0C;
 static constexpr uint8_t CAL_SELECT_SERVO = 0x0D;
 static constexpr uint8_t CAL_JOG_DELTA = 0x0E;
+static constexpr uint8_t CAL_SAVE = 0x0F;
 static constexpr uint8_t EMERGENCY_STOP = 0xFF;
 } // namespace robotcmd

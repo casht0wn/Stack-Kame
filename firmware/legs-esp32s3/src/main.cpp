@@ -23,6 +23,7 @@
 #define CMD_ZERO 0x0C
 #define CMD_CAL_SELECT_SERVO 0x0D
 #define CMD_CAL_JOG_DELTA 0x0E
+#define CMD_CAL_SAVE 0x0F
 #define CMD_EMERGENCY_STOP 0xFF
 
 // Command Queue
@@ -47,6 +48,7 @@ Preferences preferences;
 bool emergencyStop = false;
 int selectedServo = 0;
 int selectedAngle = 90;
+int currentTrims[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
 // Function declarations
 void onESPNowReceive(const uint8_t *mac, const uint8_t *data, int len);
@@ -413,6 +415,10 @@ void processCommand(byte type, byte value)
   {
     selectedServo = constrain(static_cast<int>(value), 0, 7);
     selectedAngle = 90;
+    // Zero this servo's trim so jogging reflects raw mechanical position
+    currentTrims[selectedServo] = 0;
+    kame.setTrims(currentTrims[0], currentTrims[1], currentTrims[2], currentTrims[3],
+                  currentTrims[4], currentTrims[5], currentTrims[6], currentTrims[7]);
     Serial.print("Calibration select servo ");
     Serial.println(selectedServo);
     kame.setServo(selectedServo, selectedAngle);
@@ -434,6 +440,19 @@ void processCommand(byte type, byte value)
   }
   break;
 
+  case CMD_CAL_SAVE:
+  {
+    currentTrims[selectedServo] = selectedAngle - 90;
+    kame.setTrims(currentTrims[0], currentTrims[1], currentTrims[2], currentTrims[3],
+                  currentTrims[4], currentTrims[5], currentTrims[6], currentTrims[7]);
+    saveCalibration();
+    Serial.print("Saved trim for servo ");
+    Serial.print(selectedServo);
+    Serial.print(": ");
+    Serial.println(currentTrims[selectedServo]);
+  }
+  break;
+
   case CMD_EMERGENCY_STOP: // Emergency stop
     Serial.println("Emergency Stop Command!");
     emergencyStop = true;
@@ -450,39 +469,34 @@ void processCommand(byte type, byte value)
 // Load servo trim calibration from preferences
 void loadCalibration()
 {
-  int trim0 = preferences.getInt("trim0", 0);
-  int trim1 = preferences.getInt("trim1", 0);
-  int trim2 = preferences.getInt("trim2", 0);
-  int trim3 = preferences.getInt("trim3", 0);
-  int trim4 = preferences.getInt("trim4", 0);
-  int trim5 = preferences.getInt("trim5", 0);
-  int trim6 = preferences.getInt("trim6", 0);
-  int trim7 = preferences.getInt("trim7", 0);
+  char key[8];
+  for (int i = 0; i < 8; i++)
+  {
+    snprintf(key, sizeof(key), "trim%d", i);
+    currentTrims[i] = preferences.getInt(key, 0);
+  }
 
-  kame.setTrims(trim0, trim1, trim2, trim3, trim4, trim5, trim6, trim7);
+  kame.setTrims(currentTrims[0], currentTrims[1], currentTrims[2], currentTrims[3],
+                currentTrims[4], currentTrims[5], currentTrims[6], currentTrims[7]);
 
   Serial.println("Calibration loaded from preferences");
   Serial.print("Trims: ");
-  Serial.print(trim0);
-  Serial.print(", ");
-  Serial.print(trim1);
-  Serial.print(", ");
-  Serial.print(trim2);
-  Serial.print(", ");
-  Serial.print(trim3);
-  Serial.print(", ");
-  Serial.print(trim4);
-  Serial.print(", ");
-  Serial.print(trim5);
-  Serial.print(", ");
-  Serial.print(trim6);
-  Serial.print(", ");
-  Serial.println(trim7);
+  for (int i = 0; i < 8; i++)
+  {
+    if (i > 0) Serial.print(", ");
+    Serial.print(currentTrims[i]);
+  }
+  Serial.println();
 }
 
 // Save servo trim calibration to preferences
 void saveCalibration()
 {
-  // TODO: Implement interactive calibration and save
+  char key[8];
+  for (int i = 0; i < 8; i++)
+  {
+    snprintf(key, sizeof(key), "trim%d", i);
+    preferences.putInt(key, currentTrims[i]);
+  }
   Serial.println("Calibration saved to preferences");
 }

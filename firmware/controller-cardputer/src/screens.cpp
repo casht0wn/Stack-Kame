@@ -173,23 +173,41 @@ void drawDiagnostics(const AppState &state)
     drawFooter("Del menu");
 }
 
+const char *servoName(uint8_t id)
+{
+    static const char *names[8] = {"FL Hip", "FR Hip", "FL Foot", "FR Foot", "BL Hip", "BR Hip", "BL Foot", "BR Foot"};
+    return (id < 8) ? names[id] : "?";
+}
+
+String formatTrim(int trim)
+{
+    if (trim == 0) return "0";
+    return String(trim > 0 ? "+" : "") + String(trim);
+}
+
 void drawCalibration(const AppState &state)
 {
+    const int trim = state.calibration.selectedAngle - 90;
+    const int savedTrim = state.calibration.trims[state.calibration.selectedServo];
+
     drawHeader("Calibration");
-    drawKeyValuePanel(PAD, 32, 70, 24, "Servo", String(state.calibration.selectedServo));
-    drawKeyValuePanel(85, 32, 70, 24, "Angle", String(state.calibration.selectedAngle) + " deg");
-    drawKeyValuePanel(162, 32, 70, 24, "Last TX", feedbackText(state.commandFeedback), state.commandFeedback.success ? ACCENT_OK : ACCENT_FAIL);
 
-    drawPanel(PAD, 62, SCREEN_W - (PAD * 2), 50);
+    // Row 1: servo name | current jog angle | trim that would be saved
+    drawKeyValuePanel(PAD, 32, 68, 24, "Servo", String(state.calibration.selectedServo) + " " + servoName(state.calibration.selectedServo));
+    drawKeyValuePanel(82, 32, 72, 24, "Angle", String(state.calibration.selectedAngle) + " deg");
+    drawKeyValuePanel(160, 32, 72, 24, "Trim", formatTrim(trim) + " (sv:" + formatTrim(savedTrim) + ")");
+
+    // Row 2: instructions + last TX
+    drawPanel(PAD, 62, SCREEN_W - (PAD * 2), 38);
     M5Cardputer.Display.setTextColor(WHITE, PANEL_BG);
-    M5Cardputer.Display.setCursor(16, 72);
-    M5Cardputer.Display.println("0-7 select servo");
-    M5Cardputer.Display.setCursor(16, 84);
-    M5Cardputer.Display.println("Arrows jog by +/-5 deg");
-    M5Cardputer.Display.setCursor(16, 96);
-    M5Cardputer.Display.println("Hold arrow to repeat jog");
+    M5Cardputer.Display.setCursor(16, 70);
+    M5Cardputer.Display.println("0-7 select   Arrows jog +/-5");
+    M5Cardputer.Display.setCursor(16, 82);
+    M5Cardputer.Display.println("Enter saves trim for servo");
 
-    drawFooter("Del menu   Jog only, no save yet");
+    drawKeyValuePanel(PAD, 106, SCREEN_W - (PAD * 2), 20, "Last TX", feedbackText(state.commandFeedback), state.commandFeedback.success ? ACCENT_OK : ACCENT_FAIL);
+
+    drawFooter("Del menu   Enter saves trim");
 }
 
 void changeScreen(AppState &state, ScreenId next)
@@ -329,6 +347,18 @@ void handleCalibrationInput(const KeyInput &input, AppState &state, CommandSende
     {
         changeScreen(state, ScreenId::Menu);
         state.diagnostics.addLog("Back to menu");
+        return;
+    }
+
+    if (input.action == Action::Select)
+    {
+        const int trim = state.calibration.selectedAngle - 90;
+        const String label = "Save S" + String(state.calibration.selectedServo) + " trim " + (trim >= 0 ? "+" : "") + String(trim);
+        if (sendCommand(state, sender, robotcmd::CAL_SAVE, state.calibration.selectedServo, label))
+        {
+            state.calibration.trims[state.calibration.selectedServo] = trim;
+            state.diagnostics.addLog(label);
+        }
         return;
     }
 

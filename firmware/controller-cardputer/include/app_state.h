@@ -80,6 +80,7 @@ struct CalibrationState
 {
     uint8_t selectedServo = 0;
     int selectedAngle = 90;
+    int trims[8] = {0, 0, 0, 0, 0, 0, 0, 0}; // saved trim per servo (degrees from center)
 };
 
 struct AppState
